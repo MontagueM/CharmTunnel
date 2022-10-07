@@ -5,7 +5,7 @@
 #include "LevelEditorSubsystem.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 
-#include "CharmEditorLibrary.generated.h"
+#include "CharmTunnelEditorLibrary.generated.h"
 
 class ULevelEditorSubsystem;
 

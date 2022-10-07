@@ -1,8 +1,8 @@
 ﻿#include "CharmTunnelWindowPrimaryWidget.h"
 #include <SlateOptMacros.h>
 
-#include "CharmEditorLibrary.h"
-#include "CharmLog.h"
+#include "CharmTunnelEditorLibrary.h"
+#include "CharmTunnelLog.h"
 #include "EditorStyleSet.h"
 
 DEFINE_LOG_CATEGORY(LogCharmTunnel);
