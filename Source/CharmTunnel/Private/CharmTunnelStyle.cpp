@@ -15,11 +15,11 @@ TSharedPtr<FSlateStyleSet> FCharmTunnelStyle::StyleInstance = nullptr;
 
 void FCharmTunnelStyle::Initialize()
 {
-if (!StyleInstance.IsValid())
-{
-    StyleInstance = Create();
-    FSlateStyleRegistry::RegisterSlateStyle(*StyleInstance);
-}
+    if (!StyleInstance.IsValid())
+    {
+        StyleInstance = Create();
+        FSlateStyleRegistry::RegisterSlateStyle(*StyleInstance);
+    }
 }
 
 void FCharmTunnelStyle::Shutdown()
