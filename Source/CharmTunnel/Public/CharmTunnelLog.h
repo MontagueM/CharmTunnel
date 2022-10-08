@@ -11,42 +11,42 @@
 class CHARMTUNNEL_API SCharmLog : public FOutputDevice, public SMultiLineEditableTextBox
 {
 public:
-	SCharmLog()
-	{
-		check(GLog);
-		GLog->AddOutputDevice(this);
-	}
+    SCharmLog()
+    {
+        check(GLog);
+        GLog->AddOutputDevice(this);
+    }
 
-	~SCharmLog()
-	{
-		if (GLog != nullptr)
-		{
-			GLog->RemoveOutputDevice(this);
-		}
-	}
+    ~SCharmLog()
+    {
+        if (GLog != nullptr)
+        {
+            GLog->RemoveOutputDevice(this);
+        }
+    }
 
 protected:
-	virtual void Serialize(const TCHAR* Message, ELogVerbosity::Type Verbosity, const FName& Category) override
-	{
-		if (Category != TEXT("LogCharmTunnel"))
-			return;
-		
-		FString VerbosityString;
-		switch (Verbosity)
-		{
-		case ELogVerbosity::Error:
-			VerbosityString = TEXT("ERROR: ");
-			break;
-		case ELogVerbosity::Warning:
-			VerbosityString = TEXT("Warning: ");
-			break;
-		default:
-			break;
-		}
-		LogText += TEXT("\n") + VerbosityString + Message;
-		SetText(FText::FromString(LogText));
-	}
+    virtual void Serialize(const TCHAR* Message, ELogVerbosity::Type Verbosity, const FName& Category) override
+    {
+        if (Category != TEXT("LogCharmTunnel"))
+            return;
+
+        FString VerbosityString;
+        switch (Verbosity)
+        {
+            case ELogVerbosity::Error:
+                VerbosityString = TEXT("ERROR: ");
+                break;
+            case ELogVerbosity::Warning:
+                VerbosityString = TEXT("Warning: ");
+                break;
+            default:
+                break;
+        }
+        LogText += TEXT("\n") + VerbosityString + Message;
+        SetText(FText::FromString(LogText));
+    }
 
 private:
-	FString LogText;
+    FString LogText;
 };

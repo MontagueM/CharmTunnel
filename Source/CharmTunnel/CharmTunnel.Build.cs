@@ -25,7 +25,7 @@ public class CharmTunnel : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core", "Slate",
+				"Core", "Slate"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -46,6 +46,7 @@ public class CharmTunnel : ModuleRules
 				// ... add private dependencies that you statically link with here ...	
 				"LevelEditor",
 				"AssetRegistry",
+				"AssetTools",
 			}
 			);
 		

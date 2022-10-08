@@ -2,22 +2,22 @@
 
 #pragma once
 
+#include "CharmTunnelStyle.h"
 #include "CoreMinimal.h"
 #include "Framework/Commands/Commands.h"
-#include "CharmTunnelStyle.h"
 
 class FCharmTunnelCommands : public TCommands<FCharmTunnelCommands>
 {
 public:
+    FCharmTunnelCommands()
+        : TCommands<FCharmTunnelCommands>(TEXT("CharmTunnel"), NSLOCTEXT("Contexts", "CharmTunnel", "CharmTunnel Plugin"), NAME_None,
+              FCharmTunnelStyle::GetStyleSetName())
+    {
+    }
 
-	FCharmTunnelCommands()
-		: TCommands<FCharmTunnelCommands>(TEXT("CharmTunnel"), NSLOCTEXT("Contexts", "CharmTunnel", "CharmTunnel Plugin"), NAME_None, FCharmTunnelStyle::GetStyleSetName())
-	{
-	}
-
-	// TCommands<> interface
-	virtual void RegisterCommands() override;
+    // TCommands<> interface
+    virtual void RegisterCommands() override;
 
 public:
-	TSharedPtr< FUICommandInfo > OpenCharmTunnelPluginWindow;
+    TSharedPtr<FUICommandInfo> OpenCharmTunnelPluginWindow;
 };
