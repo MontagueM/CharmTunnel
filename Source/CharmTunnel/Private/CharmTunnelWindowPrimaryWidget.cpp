@@ -2,7 +2,13 @@
 
 #include "CharmTunnelEditorLibrary.h"
 #include "CharmTunnelLog.h"
+#include "Components/SkyAtmosphereComponent.h"
+#include "Components/VolumetricCloudComponent.h"
 #include "EditorStyleSet.h"
+#include "Engine/DirectionalLight.h"
+#include "Engine/ExponentialHeightFog.h"
+#include "Engine/SkyLight.h"
+#include "Subsystems/EditorActorSubsystem.h"
 
 #include <SlateOptMacros.h>
 
@@ -119,11 +125,46 @@ void SCharmTunnelWindowPrimaryWidget::PopulateDevMap(ULevel* DevLevel)
     // Load all assets in dev map directory and add to level
     FString DebugStaticSourcePath = "C:/T/export/devmap/";
     FString DebugStaticDestPath = "/CharmTunnel/Dev/";
+
     TArray<FString> Files = FCharmEditorLibrary::GetFilesInDirectory(DebugStaticSourcePath, "*_info.cfg");
     for (auto& File : Files)
     {
-        FCharmEditorLibrary::ImportAssetFromConfigFile(DebugStaticSourcePath / File, DebugStaticDestPath / "Data/");
+        FCharmEditorLibrary::ImportAssetFromConfigFile(File, DebugStaticDestPath / "Data/");
     }
+
+    if (UEditorActorSubsystem* EditorActorSubsystem = GEditor->GetEditorSubsystem<UEditorActorSubsystem>())
+    {
+        EditorActorSubsystem->SpawnActorFromObject(ASkyLight::StaticClass(), FVector::Zero());
+        EditorActorSubsystem->SpawnActorFromObject(AVolumetricCloud::StaticClass(), FVector::Zero());
+        EditorActorSubsystem->SpawnActorFromObject(ASkyAtmosphere::StaticClass(), FVector::Zero());
+        EditorActorSubsystem->SpawnActorFromObject(AExponentialHeightFog::StaticClass(), FVector::Zero());
+        EditorActorSubsystem->SpawnActorFromObject(ADirectionalLight::StaticClass(), FVector::Zero(), FRotator(-105, -31, -14));
+        EditorActorSubsystem->SpawnActorFromObject(ADirectionalLight::StaticClass(), FVector::Zero(), FRotator(-105, -31, -14));
+        UStaticMesh* StaticMeshPlane = FCharmEditorLibrary::LoadAsset<UStaticMesh>("/Engine/BasicShapes/Plane");
+        AActor* Plane = EditorActorSubsystem->SpawnActorFromObject(StaticMeshPlane, FVector::Zero(), FRotator(), false);
+        Plane->SetActorScale3D(FVector(100, 100, 1));
+        UStaticMesh* SM0F3CBE80 = FCharmEditorLibrary::LoadAsset<UStaticMesh>(DebugStaticDestPath / "SM/0F3CBE80");
+        EditorActorSubsystem->SpawnActorFromObject(SM0F3CBE80, FVector::Zero());
+        UStaticMesh* SM68A8B480 = FCharmEditorLibrary::LoadAsset<UStaticMesh>(DebugStaticDestPath / "SM/68A8B480");
+        EditorActorSubsystem->SpawnActorFromObject(SM68A8B480, FVector(1000, 0, 0));
+        UStaticMesh* SM6C24BB80 = FCharmEditorLibrary::LoadAsset<UStaticMesh>(DebugStaticDestPath / "SM/6C24BB80");
+        EditorActorSubsystem->SpawnActorFromObject(SM6C24BB80, FVector(2000, 0, 0));
+        UStaticMesh* SMA229BE80 = FCharmEditorLibrary::LoadAsset<UStaticMesh>(DebugStaticDestPath / "SM/A229BE80");
+        EditorActorSubsystem->SpawnActorFromObject(SMA229BE80, FVector(3000, 0, 0));
+        UStaticMesh* SMA237BE80 = FCharmEditorLibrary::LoadAsset<UStaticMesh>(DebugStaticDestPath / "SM/A237BE80");
+        EditorActorSubsystem->SpawnActorFromObject(SMA237BE80, FVector(4000, 0, 0));
+        UStaticMesh* SMB540BE80 = FCharmEditorLibrary::LoadAsset<UStaticMesh>(DebugStaticDestPath / "SM/B540BE80");
+        EditorActorSubsystem->SpawnActorFromObject(SMB540BE80, FVector(-1000, 0, 0));
+        UStaticMesh* SMB63BBE80 = FCharmEditorLibrary::LoadAsset<UStaticMesh>(DebugStaticDestPath / "SM/B63BBE80");
+        EditorActorSubsystem->SpawnActorFromObject(SMB63BBE80, FVector(-2000, 0, 0));
+        UStaticMesh* SMCB32BE80 = FCharmEditorLibrary::LoadAsset<UStaticMesh>(DebugStaticDestPath / "SM/CB32BE80");
+        EditorActorSubsystem->SpawnActorFromObject(SMCB32BE80, FVector(-3000, 0, 0));
+        UStaticMesh* SME1C5B280 = FCharmEditorLibrary::LoadAsset<UStaticMesh>(DebugStaticDestPath / "SM/E1C5B280");
+        EditorActorSubsystem->SpawnActorFromObject(SME1C5B280, FVector(-4000, 0, 0));
+        UStaticMesh* SMFBA4B480 = FCharmEditorLibrary::LoadAsset<UStaticMesh>(DebugStaticDestPath / "SM/FBA4B480");
+        EditorActorSubsystem->SpawnActorFromObject(SMFBA4B480, FVector(0, 1000, 0));
+    }
+
     auto a = 0;
 }
 

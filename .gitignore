@@ -72,3 +72,9 @@ Plugins/*/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+# Don't want any content
+Content/*
+
+*.uasset
+*.umap

@@ -6,6 +6,7 @@ public class CharmTunnel : ModuleRules
 {
 	public CharmTunnel(ReadOnlyTargetRules Target) : base(Target)
 	{
+		OptimizeCode = CodeOptimization.Never;
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
 		PublicIncludePaths.AddRange(
@@ -25,7 +26,7 @@ public class CharmTunnel : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core", "Slate"
+				"Core", "Slate", "EditorScriptingUtilities",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -47,6 +48,8 @@ public class CharmTunnel : ModuleRules
 				"LevelEditor",
 				"AssetRegistry",
 				"AssetTools",
+				"Json",
+				"MaterialEditor"
 			}
 			);
 		
