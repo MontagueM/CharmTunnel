@@ -24,8 +24,11 @@ public:
 
     FReply OnSelectInfoConfigPathClicked();
     void PopulateDevMap(ULevel* DevLevel);
-    FReply OnLoadDevMapClicked();
+    FReply OnLoadDevMapFullyClicked();
     FReply OnSelectOutputDirectoryClicked();
+    FReply OnLoadDevMapAssetsClicked();
+    FReply OnLoadDevMapMaterialsClicked();
+    FReply OnLoadDevMapUsfsClicked();
     /**
      * Construct this widget. Called by the SNew() Slate macro.
      *
@@ -34,6 +37,8 @@ public:
     void Construct(const FArguments& InArgs);
 
     TSharedPtr<class SCharmLog> LogBox;
+
+    TSharedPtr<class FCharmSceneViewExtension, ESPMode::ThreadSafe> CharmSceneViewExtension;
 
 private:
     // An example property to set in Construct

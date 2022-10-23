@@ -28,7 +28,7 @@ public:
 protected:
     virtual void Serialize(const TCHAR* Message, ELogVerbosity::Type Verbosity, const FName& Category) override
     {
-        if (Category != TEXT("LogCharmTunnel"))
+        if (!(Category.ToString().Contains("LogCharmTunnel") || Category.ToString().Contains("LogCT")))
             return;
 
         FString VerbosityString;

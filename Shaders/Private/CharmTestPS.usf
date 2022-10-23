@@ -1,0 +1,10 @@
+﻿#include "/Engine/Public/Platform.ush"
+// clang-format off
+
+/* Pixel shader
+=============================================================================*/
+
+void MainPS(float4 InPosition : SV_POSITION, float2 InUV : TEXCOORD0, out float4 OutColor : SV_Target0)
+{
+    OutColor = float4(1, 0, 0, 1);
+}

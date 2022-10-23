@@ -1,13 +1,16 @@
-﻿#include "CharmTunnelWindowPrimaryWidget.h"
+﻿#include "CT_WindowPrimaryWidget.h"
 
-#include "CharmTunnelEditorLibrary.h"
-#include "CharmTunnelLog.h"
+#include "CT_EditorLibrary.h"
+#include "CT_Log.h"
+#include "CT_UsfConverter.h"
+#include "CharmSceneViewExtension.h"
 #include "Components/SkyAtmosphereComponent.h"
 #include "Components/VolumetricCloudComponent.h"
 #include "EditorStyleSet.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
 #include "Engine/SkyLight.h"
+#include "SceneViewExtension.h"
 #include "Subsystems/EditorActorSubsystem.h"
 
 #include <SlateOptMacros.h>
@@ -64,14 +67,24 @@ void SCharmTunnelWindowPrimaryWidget::Construct(const FArguments& InArgs)
                                            .OnClicked(this, &SCharmTunnelWindowPrimaryWidget::OnSelectOutputDirectoryClicked)
                                            .Text(LOCTEXT("OutputDirectoryButton", "..."))
                                            .ToolTipText(LOCTEXT("OutputDirectoryButtonTooltip", "Must be within the Content directory"))]] +
-                    SVerticalBox::Slot().AutoHeight()[SNew(SHorizontalBox) +
-                                                      SHorizontalBox::Slot()
-                                                          .AutoWidth()
-                                                          .VAlign(VAlign_Center)
-                                                          .Padding(10, 0, 0,
-                                                              0)[SNew(SButton)
-                                                                     .OnClicked(this, &SCharmTunnelWindowPrimaryWidget::OnLoadDevMapClicked)
-                                                                     .Text(LOCTEXT("LoadDevMapButton", "Load dev map"))]]] +
+                    SVerticalBox::Slot()
+                        .AutoHeight()[SNew(SHorizontalBox) +
+                                      SHorizontalBox::Slot().AutoWidth().VAlign(
+                                          VAlign_Center)[SNew(SButton)
+                                                             .OnClicked(this, &SCharmTunnelWindowPrimaryWidget::OnLoadDevMapFullyClicked)
+                                                             .Text(LOCTEXT("LoadDevMapFullyButton", "Load dev map fully"))] +
+                                      SHorizontalBox::Slot().AutoWidth().VAlign(
+                                          VAlign_Center)[SNew(SButton)
+                                                             .OnClicked(this, &SCharmTunnelWindowPrimaryWidget::OnLoadDevMapUsfsClicked)
+                                                             .Text(LOCTEXT("LoadDevMapUsfsButton", "Reload dev map usfs only"))]]] +
+            SHorizontalBox::Slot().AutoWidth().VAlign(
+                VAlign_Center)[SNew(SButton)
+                                   .OnClicked(this, &SCharmTunnelWindowPrimaryWidget::OnLoadDevMapAssetsClicked)
+                                   .Text(LOCTEXT("LoadDevMapAssetsButton", "Load dev map assets only"))] +
+            SHorizontalBox::Slot().AutoWidth().VAlign(
+                VAlign_Center)[SNew(SButton)
+                                   .OnClicked(this, &SCharmTunnelWindowPrimaryWidget::OnLoadDevMapMaterialsClicked)
+                                   .Text(LOCTEXT("LoadDevMapMaterialsButton", "Load dev map materials only"))] +
             SHorizontalBox::Slot().FillWidth(1)[SNew(SVerticalBox) + SVerticalBox::Slot().FillHeight(1).Padding(10)[LogBox.ToSharedRef()]
 
     ]
@@ -84,6 +97,10 @@ void SCharmTunnelWindowPrimaryWidget::Construct(const FArguments& InArgs)
 
 FReply SCharmTunnelWindowPrimaryWidget::OnSelectInfoConfigPathClicked()
 {
+    if (!CharmSceneViewExtension.IsValid())
+    {
+        CharmSceneViewExtension = FSceneViewExtensions::NewExtension<FCharmSceneViewExtension>();
+    }
     return FReply::Handled();
 }
 
@@ -92,7 +109,7 @@ FReply SCharmTunnelWindowPrimaryWidget::OnSelectOutputDirectoryClicked()
     return FReply::Handled();
 }
 
-FReply SCharmTunnelWindowPrimaryWidget::OnLoadDevMapClicked()
+FReply SCharmTunnelWindowPrimaryWidget::OnLoadDevMapFullyClicked()
 {
     FString DevMapName = "/CharmTunnel/Dev/Dev_P";
     if (FCharmEditorLibrary::DoesAssetExist(DevMapName))
@@ -117,6 +134,59 @@ FReply SCharmTunnelWindowPrimaryWidget::OnLoadDevMapClicked()
     {
         LOG_ERROR("Dev map creation failed");
     }
+    return FReply::Handled();
+}
+
+FReply SCharmTunnelWindowPrimaryWidget::OnLoadDevMapAssetsClicked()
+{
+    return FReply::Handled();
+}
+
+FReply SCharmTunnelWindowPrimaryWidget::OnLoadDevMapMaterialsClicked()
+{
+    return FReply::Handled();
+}
+
+FReply SCharmTunnelWindowPrimaryWidget::OnLoadDevMapUsfsClicked()
+{
+    FString DebugStaticSourcePath = "C:/T/export/devmap/";
+    FString DebugStaticDestPath = "/CharmTunnel/Dev/";
+
+    // Find the config file and recreate usfs from hlsl
+    TArray<FString> Files = FCharmEditorLibrary::GetFilesInDirectory(DebugStaticSourcePath, "*_info.cfg");
+    TMap<FString, TSharedPtr<FJsonObject>> MaterialInfos;
+    TMap<FString, FString> ConfigPaths;
+    for (auto& File : Files)
+    {
+        TSharedPtr<FJsonObject> JsonObject;
+        if (!FCharmEditorLibrary::LoadConfigFile(File, JsonObject))
+        {
+            continue;
+        }
+
+        const TSharedPtr<FJsonObject> Materials = JsonObject->GetObjectField("Materials");
+        bool btest = 0;
+        for (auto& Pair : Materials->Values)
+        {
+            if (ConfigPaths.Contains(Pair.Key))
+            {
+                continue;
+            }
+            MaterialInfos.Add(Pair.Key, Pair.Value->AsObject());
+            ConfigPaths.Add(Pair.Key, File);
+        }
+    }
+
+    for (auto& MaterialInfo : MaterialInfos)
+    {
+        const FString ParentDirectory = FPaths::GetPath(ConfigPaths[MaterialInfo.Key]);
+        bool bOutSuccess;
+        TSharedRef<UsfShader> Shader = CT_UsfConverter::ConvertFromHlsl(MaterialInfo.Value->GetObjectField("PS"),
+            ParentDirectory / "Shaders" / "PS_" + MaterialInfo.Key + ".hlsl", PixelShader, bOutSuccess);
+
+        bool bTest = false;
+    }
+
     return FReply::Handled();
 }
 

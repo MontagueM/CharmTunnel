@@ -1,0 +1,53 @@
+﻿// clang-format off
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Generated/Material.ush"
+#include "/Engine/Generated/VertexFactory.ush"
+/* Vertex shader
+=============================================================================*/
+
+// void MainVS(in float4 InPosition : ATTRIBUTE0,
+//             in float2 InTexCoord : ATTRIBUTE1,
+//             out float4 OutPosition : SV_POSITION,
+//             out float2 OutUVAndScreenPos: TEXCOORD0)
+// {
+//     DrawRectangle(InPosition, InTexCoord, OutPosition, OutUVAndScreenPos);
+//     // OutPosition = float4(InPosition.xyz, 1);
+// }
+
+// void MainVS(float3 InPosition : ATTRIBUTE0, float2 InUV : ATTRIBUTE1, out float4 OutPosition : SV_POSITION)
+// {
+//     OutPosition = float4(InPosition, 1);
+// }
+
+FVertexFactoryIntermediates GetIntermediates(uint InstanceIdOffset, uint DrawInstanceId)
+{
+    FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates)0;
+    Intermediates.SceneData =  GetSceneDataIntermediates(InstanceIdOffset, DrawInstanceId);
+    Intermediates.PrimitiveLocalInstanceIndex = Intermediates.SceneData.InstanceId - GetPrimitiveData(Intermediates).InstanceSceneDataOffset;
+    
+    return Intermediates;
+}
+
+float4 GetWorldPosition(float3 Position, FVertexFactoryIntermediates Intermediates)
+{
+    FLWCMatrix LocalToWorld = GetInstanceData(Intermediates).LocalToWorld;
+    return TransformLocalToTranslatedWorld(Position, LocalToWorld);
+}
+
+// FVertexFactoryInput is from LocalVertexFactory.ush
+void MainVS(in float3 InPosition : ATTRIBUTE0, in float2 InTexCoord : ATTRIBUTE5, out float4 OutPosition : SV_POSITION, out float2 OutUV : TEXCOORD0)
+{
+    // FSceneDataIntermediates SceneData = GetSceneDataIntermediates(0, 0);
+    // FSceneDataIntermediates SceneData1 = GetSceneDataIntermediates(1, 0);
+    // FLWCMatrix LocalToWorld = SceneData.InstanceData.LocalToWorld;
+    // float4 WorldPosition = TransformLocalToTranslatedWorld(InPosition.xyz, LocalToWorld);
+    // Test1 = WorldPosition;
+    // Test2 = TransformLocalToTranslatedWorld(InPosition.xyz, SceneData1.InstanceData.LocalToWorld);
+    // {
+    //     float4 RasterizedWorldPosition = WorldPosition;
+    //     float4 ClipSpacePosition = INVARIANT(mul(RasterizedWorldPosition, View_TranslatedWorldToClip));
+    //     OutPosition = INVARIANT(ClipSpacePosition);
+    // }
+    OutPosition = float4(InPosition, 1);
+    OutUV = InTexCoord;
+}

@@ -12,6 +12,7 @@ public class CharmTunnel : ModuleRules
 		PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
+				"../../../UnrealEngine/Engine/Source/Runtime/Renderer/Public"
 			}
 			);
 				
@@ -19,6 +20,7 @@ public class CharmTunnel : ModuleRules
 		PrivateIncludePaths.AddRange(
 			new string[] {
 				// ... add other private include paths required here ...
+				"../../../../Engine/Source/Runtime/Renderer/Private"
 			}
 			);
 			
@@ -26,7 +28,8 @@ public class CharmTunnel : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core", "Slate", "EditorScriptingUtilities",
+				"Core", "Slate", "EditorScriptingUtilities", "Renderer", "RenderCore",				"RHI",
+				"RHICore", "TargetPlatform", "Engine"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -35,6 +38,8 @@ public class CharmTunnel : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
+				"Core",
+				"TargetPlatform",
 				"Projects",
 				"InputCore",
 				"EditorFramework",
@@ -49,7 +54,11 @@ public class CharmTunnel : ModuleRules
 				"AssetRegistry",
 				"AssetTools",
 				"Json",
-				"MaterialEditor"
+				"MaterialEditor",
+				"Renderer", 
+				"RenderCore",
+				"RHI",
+				"RHICore",
 			}
 			);
 		

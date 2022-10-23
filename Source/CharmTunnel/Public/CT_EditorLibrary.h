@@ -2,6 +2,7 @@
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetToolsModule.h"
+#include "CT_UsfConverter.h"
 #include "CoreMinimal.h"
 #include "EditorAssetLibrary.h"
 #include "Factories/FbxFactory.h"
@@ -19,7 +20,7 @@
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 
-#include "CharmTunnelEditorLibrary.generated.h"
+#include "CT_EditorLibrary.generated.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogCharmTunnel, Log, All);
 inline DEFINE_LOG_CATEGORY(LogCharmTunnel);
@@ -28,6 +29,14 @@ inline DEFINE_LOG_CATEGORY(LogCharmTunnel);
 #define LOG_VERBOSE(x, ...) UE_LOG(LogCharmTunnel, Verbose, TEXT(x), __VA_ARGS__)
 #define LOG_WARNING(x, ...) UE_LOG(LogCharmTunnel, Warning, TEXT(x), __VA_ARGS__)
 #define LOG_ERROR(x, ...) UE_LOG(LogCharmTunnel, Error, TEXT(x), __VA_ARGS__)
+
+/*
+
+Todo:
+
+Move USF converter into the plugin from Charm
+
+*/
 
 USTRUCT()
 struct CHARMTUNNEL_API FCharmEditorLibrary
@@ -161,6 +170,26 @@ public:
         return Files;
     }
 
+    static bool LoadConfigFile(const FString& ConfigFilePath, OUT TSharedPtr<FJsonObject>& JsonObject)
+    {
+        FString FileContents;
+        if (!FFileHelper::LoadFileToString(FileContents, *ConfigFilePath))
+        {
+            LOG_ERROR("Failed to load config file %s.", *ConfigFilePath);
+            return false;
+        }
+
+        const TSharedRef<TJsonReader<>> JsonReader = TJsonReaderFactory<>::Create(FileContents);
+
+        if (!FJsonSerializer::Deserialize(JsonReader, JsonObject) || !JsonObject.IsValid())
+        {
+            LOG_ERROR("Unable to parse config json=[%s]", *FileContents);
+            return false;
+        }
+
+        return true;
+    }
+
     /**
      * Import an asset using a Charm config file.
      *
@@ -171,19 +200,9 @@ public:
     static bool ImportAssetFromConfigFile(const FString& ConfigFilePath, const FString& TargetDirectory)
     {
         // Read the config file to determine how to load the file.
-        FString FileContents;
-        if (!FFileHelper::LoadFileToString(FileContents, *ConfigFilePath))
-        {
-            LOG_ERROR("Failed to load config file %s.", *ConfigFilePath);
-            return false;
-        }
-
         TSharedPtr<FJsonObject> JsonObject;
-        const TSharedRef<TJsonReader<>> JsonReader = TJsonReaderFactory<>::Create(FileContents);
-
-        if (!FJsonSerializer::Deserialize(JsonReader, JsonObject) || !JsonObject.IsValid())
+        if (!LoadConfigFile(ConfigFilePath, JsonObject))
         {
-            LOG_ERROR("Unable to parse config json=[%s]", *FileContents);
             return false;
         }
 
@@ -232,7 +251,7 @@ public:
                 auto a = 0;
             }
             const TSharedPtr<FJsonObject> MaterialInfo = Materials->GetObjectField(MaterialHash);
-            const TSharedPtr<FJsonObject> PSTexturesInfo = MaterialInfo->GetObjectField("PS");
+            const TSharedPtr<FJsonObject> PSTexturesInfo = MaterialInfo->GetObjectField("PS")->GetObjectField("Textures");
             for (auto& Value : PSTexturesInfo->Values)
             {
                 const TSharedPtr<FJsonObject>* TextureMap;
@@ -287,20 +306,25 @@ public:
         // CustomVSNode->OutputType = ECustomMaterialOutputType::CMOT_MaterialAttributes;
         UMaterialExpressionCustom* CustomPSNode = Cast<UMaterialExpressionCustom>(
             UMaterialEditingLibrary::CreateMaterialExpression(Material, UMaterialExpressionCustom::StaticClass(), -500, 0));
-        FString UsfContents;
-        FString PsUsfFilePath = SourceDirectory / "Shaders" / "PS_" + MaterialName + ".usf";
-        if (!FFileHelper::LoadFileToString(UsfContents, *PsUsfFilePath))
-        {
-            LOG_ERROR("Failed to load usf file %s.", *PsUsfFilePath);
-        }
-        CustomPSNode->Code = UsfContents;
-        if (UsfContents.Contains("// masked"))
+        // FString UsfContents;
+        bool bOutSuccess;
+        TSharedRef<UsfShader> Shader = CT_UsfConverter::ConvertFromHlsl(MaterialInfo->GetObjectField("PS"),
+            SourceDirectory / "Shaders" / "PS_" + MaterialName + ".hlsl", EShaderType::PixelShader, bOutSuccess);
+
+        // FString PsUsfFilePath = SourceDirectory / "Shaders" / "PS_" + MaterialName + ".usf";
+        // if (!FFileHelper::LoadFileToString(UsfContents, *PsUsfFilePath))
+        // {
+        // LOG_ERROR("Failed to load usf file %s.", *PsUsfFilePath);
+        // }
+        CustomPSNode->Code = Shader->UsfContents;
+        if (Shader->UsfContents.Contains("// masked"))
         {
             Material->BlendMode = BLEND_Masked;
             Material->TwoSided = true;
         }
         CustomPSNode->OutputType = CMOT_MaterialAttributes;
-        const TSharedPtr<FJsonObject> PSTexturesInfo = MaterialInfo->GetObjectField("PS");
+        CustomPSNode->Inputs.Empty();
+        const TSharedPtr<FJsonObject> PSTexturesInfo = MaterialInfo->GetObjectField("PS")->GetObjectField("Textures");
         int i = 0;
         for (auto& TextureInfo : PSTexturesInfo->Values)
         {

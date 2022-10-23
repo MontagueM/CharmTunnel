@@ -2,9 +2,10 @@
 
 #include "CharmTunnel.h"
 
+#include "CT_WindowPrimaryWidget.h"
 #include "CharmTunnelCommands.h"
 #include "CharmTunnelStyle.h"
-#include "CharmTunnelWindowPrimaryWidget.h"
+#include "Interfaces/IPluginManager.h"
 #include "Misc/MessageDialog.h"
 #include "ToolMenus.h"
 
@@ -32,6 +33,9 @@ void FCharmTunnelModule::StartupModule()
         ->RegisterNomadTabSpawner(CharmTunnelTabName, FOnSpawnTab::CreateRaw(this, &FCharmTunnelModule::OnSpawnPluginTab))
         .SetDisplayName(LOCTEXT("FCharmTunnelTabTitle", "Charm Tunnel"))
         .SetMenuType(ETabSpawnerMenuType::Hidden);
+
+    FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("CharmTunnel"))->GetBaseDir(), TEXT("Shaders"));
+    AddShaderSourceDirectoryMapping(TEXT("/Plugin/CharmTunnel"), PluginShaderDir);
 }
 
 void FCharmTunnelModule::ShutdownModule()
