@@ -48,6 +48,14 @@ void MainVS(in float3 InPosition : ATTRIBUTE0, in float2 InTexCoord : ATTRIBUTE5
     //     float4 ClipSpacePosition = INVARIANT(mul(RasterizedWorldPosition, View_TranslatedWorldToClip));
     //     OutPosition = INVARIANT(ClipSpacePosition);
     // }
-    OutPosition = float4(InPosition, 1);
+    float4 InPosition4 = float4(InPosition, 1);
+    OutPosition = mul(InPosition4, View_RelativeWorldToClip);
+    OutPosition.x = OutPosition.x + 1023;
+    OutPosition.y = OutPosition.y + 1136;
+    OutPosition.w = OutPosition.w + 2181;
+    // Test1 = mul(InPosition4, View_TranslatedWorldToClip);
+    // Test2 = mul(InPosition4, View_TranslatedWorldToView);
+    // Test2 = mul(Test2, View_ViewToClip);
+    // OutPosition = float4(InPosition, 1);
     OutUV = InTexCoord;
 }
