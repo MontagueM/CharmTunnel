@@ -29,6 +29,7 @@ uint CharmPrimitiveId;
 // FVertexFactoryInput is from LocalVertexFactory.ush
 void MainVS(
     in float3 InPosition : ATTRIBUTE0,
+    in float2 InTangent : ATTRIBUTE3,
     in float2 InTexCoord : ATTRIBUTE5,
     uint InstanceIdOffset : ATTRIBUTE13,
     uint DrawInstanceId : SV_InstanceID,

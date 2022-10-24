@@ -105,6 +105,15 @@ public:
         // return EnumHasAllFlags(Parameters.Flags, EShaderPermutationFlags::HasEditorOnlyData)
         return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
     }
+
+    void SetParameters(
+        FRHICommandList& RHICmdList, const FMaterialRenderProxy* MaterialProxy, const FMaterial& Material, const FSceneView View)
+    {
+        FRHIVertexShader* ShaderRHI = RHICmdList.GetBoundVertexShader();
+        SetViewParameters(RHICmdList, ShaderRHI, View, View.ViewUniformBuffer);
+        FMeshMaterialShader::SetParameters(RHICmdList, ShaderRHI, MaterialProxy, Material, View);
+        // SetShaderValue(InRHICmdList, ShaderRHI, LocalToWorld, InLocalToWorld);
+    }
 };
 
 IMPLEMENT_SHADER_TYPE(, FCharmTestVS, TEXT("/Plugin/CharmTunnel/Private/CharmTestVS.usf"), TEXT("MainVS"), SF_Vertex);
@@ -350,7 +359,6 @@ void FCharmSceneViewExtension::RenderStaticMesh(
 
             // VertexShader->SetViewParameters(RHICmdList, VertexShader.GetVertexShader(), InView, InView.ViewUniformBuffer);
 
-            PixelShader->SetParameters(RHICmdList, PixelShader.GetPixelShader(), MaterialProxy, Material, InView);
             // SetUniformBufferParameter(
             // RHICmdList, VertexShader.GetVertexShader(), MaterialUniformBuffer, UniformExpressionCache->UniformBuffer);
             // VertexShader->SetViewParameters();
@@ -405,6 +413,7 @@ void FCharmSceneViewExtension::RenderStaticMesh(
             // ShaderElementData.InitializeMeshMaterialData(View, StaticMeshSceneProxy, StaticMesh, -1, true);
             // ShaderElementData.LocalToWorld = FMatrix44f(StaticMeshSceneProxy->GetLocalToWorld());
             VertexShader->SetParameters(RHICmdList, InView, PrimitiveId);
+            PixelShader->SetParameters(RHICmdList, MaterialProxy, Material, InView);
             // VertexShader->SetCustomParameters(RHICmdList, VertexShader.GetVertexShader(), 12);
             // FCharmTestVS* const VertexShaderPtr = static_cast<FCharmTestVS*>(VertexShader.GetShader());
             // check(VertexShaderPtr != nullptr);

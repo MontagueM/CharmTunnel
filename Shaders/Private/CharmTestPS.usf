@@ -1,10 +1,80 @@
-﻿#include "/Engine/Public/Platform.ush"
+﻿#include "/Engine/Generated/Material.ush"
+#include "/Engine/Generated/VertexFactory.ush"
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Public/Platform.ush"
 // clang-format off
 
 /* Pixel shader
 =============================================================================*/
 
-void MainPS(float4 InPosition : SV_POSITION, float2 InUV : TEXCOORD0, out float4 OutColor : SV_Target0)
+void MainPS(
+    float4 InPosition : SV_POSITION,
+    float2 InUV : TEXCOORD0,
+    out float4 OutSceneColor : SV_Target0,
+    out float4 OutGBufferA : SV_Target1, // rgb = world normal
+    out float4 OutGBufferB : SV_Target2, // r = metallic, g = specular, b = roughness, a = ShadingModelID
+    out float4 OutGBufferC : SV_Target3, // rgb = base colour, a = ambient occlusion
+    out float4 OutGBufferD : SV_Target4,
+    out float4 OutGBufferE : SV_Target5,
+    out float OutSceneDepth : SV_Depth
+)
 {
-    OutColor = float4(0, 1, 1, 1);
+    ResolvedView = ResolveView();
+
+    FGBufferData GBuffer = (FGBufferData)0;; // <--- use this!!!
+    // float2 ScreenUV = SvPositionToBufferUV(InPosition);
+    // make SvPosition appear to be rasterized with the depth from the depth buffer
+    // SvPosition.z = LookupDeviceZ(ScreenUV);
+    // float SceneDepth = CalcSceneDepth(ScreenUV);
+    // FGBufferData GBufferData = GetGBufferData(ScreenUV);
+
+    OutSceneColor.xyzw = 0;
+    // OutGBufferA.xyzw = 0;
+    // OutGBufferB.xyzw = 0;
+    // OutGBufferC.xyzw = 0;
+    // OutGBufferD.xyzw = 0;
+    // OutGBufferE.xyzw = 0;
+    //
+    // OutGBufferA.xyz = float3(1, 1, 1);
+    // OutGBufferA.w = 1;  // custom data unk
+    // OutGBufferB.x = 1; // test set completely metallic
+    // OutGBufferB.y = 0.5; // test set 0.5 specular
+    // OutGBufferB.w = EncodeShadingModelIdAndSelectiveOutputMask(SHADINGMODELID_DEFAULT_LIT, 0);
+    // OutGBufferC.xyz = float3(1, 0, 0); // test set completely blue
+    // OutGBufferE.xyzw = 1;
+    OutSceneDepth = InPosition.w;
+
+    float3 WorldNormal = float3(0, 0, 1);
+    float3 WorldTangent = float3(0, 0, 1);
+    float3 BaseColor = float3(0.25, 1.0, 0);
+    float Metallic = 0.8;
+    float Specular = 0.5;
+    float Roughness = 0.9;
+    float Anisotropy = 0.0;
+    int ShadingModel = SHADINGMODELID_DEFAULT_LIT;
+
+    // GBuffer.GBufferAO = MaterialAO;
+    // GBuffer.PerObjectGBufferData = GetPrimitive_PerObjectGBufferData(MaterialParameters.PrimitiveId);
+    GBuffer.Depth = InPosition.w;
+    // GBuffer.PrecomputedShadowFactors = GetPrecomputedShadowMasks(LightmapVTPageTableResult, Interpolants, MaterialParameters, VolumetricLightmapBrickTextureUVs);
+    GBuffer.WorldNormal = WorldNormal;
+    GBuffer.WorldTangent = WorldTangent;
+    GBuffer.BaseColor = BaseColor;
+    GBuffer.Metallic = Metallic;
+    GBuffer.Specular = Specular;
+    GBuffer.Roughness = Roughness;
+    GBuffer.Anisotropy = Anisotropy;
+    GBuffer.ShadingModelID = ShadingModel;
+
+    // GBuffer.SelectiveOutputMask = GetSelectiveOutputMask() >> 4;
+    GBuffer.Velocity = 0;
+    GBuffer.SpecularColor = ComputeF0(Specular, BaseColor, Metallic);
+    GBuffer.DiffuseColor = BaseColor - BaseColor * Metallic;
+    
+    // GBuffer.GBufferAO = AOMultiBounce( Luminance( GBuffer.SpecularColor ), SpecOcclusion ).g;
+    // GBuffer.DiffuseIndirectSampleOcclusion = GetDiffuseIndirectSampleOcclusion(GBuffer, MaterialParameters, In.SvPosition.xy, MaterialAO);
+
+    float4 OutVelocity;
+    float QuantizationBias = PseudoRandom( InPosition.xy ) - 0.5f;
+    EncodeGBuffer(GBuffer, OutGBufferA, OutGBufferB, OutGBufferC, OutGBufferD, OutGBufferE, OutVelocity, QuantizationBias);
 }
