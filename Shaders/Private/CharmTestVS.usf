@@ -19,43 +19,39 @@
 //     OutPosition = float4(InPosition, 1);
 // }
 
-FVertexFactoryIntermediates GetIntermediates(uint InstanceIdOffset, uint DrawInstanceId)
-{
-    FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates)0;
-    Intermediates.SceneData =  GetSceneDataIntermediates(InstanceIdOffset, DrawInstanceId);
-    Intermediates.PrimitiveLocalInstanceIndex = Intermediates.SceneData.InstanceId - GetPrimitiveData(Intermediates).InstanceSceneDataOffset;
-    
-    return Intermediates;
-}
+// cbuffer CharmParameters
+// {
+//     float4x4 LocalToWorld;
+// }
 
-float4 GetWorldPosition(float3 Position, FVertexFactoryIntermediates Intermediates)
-{
-    FLWCMatrix LocalToWorld = GetInstanceData(Intermediates).LocalToWorld;
-    return TransformLocalToTranslatedWorld(Position, LocalToWorld);
-}
+uint CharmPrimitiveId;
 
 // FVertexFactoryInput is from LocalVertexFactory.ush
-void MainVS(in float3 InPosition : ATTRIBUTE0, in float2 InTexCoord : ATTRIBUTE5, out float4 OutPosition : SV_POSITION, out float2 OutUV : TEXCOORD0)
+void MainVS(
+    in float3 InPosition : ATTRIBUTE0,
+    in float2 InTexCoord : ATTRIBUTE5,
+    uint InstanceIdOffset : ATTRIBUTE13,
+    uint DrawInstanceId : SV_InstanceID,
+    uint VertexId : SV_VertexID,
+    out float4 OutPosition : SV_POSITION,
+    out float2 OutUV : TEXCOORD0)
 {
-    // FSceneDataIntermediates SceneData = GetSceneDataIntermediates(0, 0);
-    // FSceneDataIntermediates SceneData1 = GetSceneDataIntermediates(1, 0);
-    // FLWCMatrix LocalToWorld = SceneData.InstanceData.LocalToWorld;
-    // float4 WorldPosition = TransformLocalToTranslatedWorld(InPosition.xyz, LocalToWorld);
-    // Test1 = WorldPosition;
-    // Test2 = TransformLocalToTranslatedWorld(InPosition.xyz, SceneData1.InstanceData.LocalToWorld);
-    // {
-    //     float4 RasterizedWorldPosition = WorldPosition;
-    //     float4 ClipSpacePosition = INVARIANT(mul(RasterizedWorldPosition, View_TranslatedWorldToClip));
-    //     OutPosition = INVARIANT(ClipSpacePosition);
-    // }
-    float4 InPosition4 = float4(InPosition, 1);
-    OutPosition = mul(InPosition4, View_RelativeWorldToClip);
-    OutPosition.x = OutPosition.x + 1023;
-    OutPosition.y = OutPosition.y + 1136;
-    OutPosition.w = OutPosition.w + 2181;
-    // Test1 = mul(InPosition4, View_TranslatedWorldToClip);
-    // Test2 = mul(InPosition4, View_TranslatedWorldToView);
-    // Test2 = mul(Test2, View_ViewToClip);
-    // OutPosition = float4(InPosition, 1);
+    ResolvedView = ResolveView();
+    // InstanceIdOffset = 0x80000000;
+
+    uint InstanceId = GetPrimitiveData(CharmPrimitiveId).InstanceSceneDataOffset + DrawInstanceId;
+    FInstanceSceneData InstanceData = GetInstanceSceneData(InstanceId, View_InstanceSceneDataSOAStride);
+    FLWCMatrix LocalToWorld = InstanceData.LocalToWorld;
+    float4 WorldPosition = TransformLocalToTranslatedWorld(InPosition, LocalToWorld);
+    float4 ClipSpacePosition;
+    {
+        float4 RasterizedWorldPosition = WorldPosition;
+        ClipSpacePosition =  mul(RasterizedWorldPosition, ResolvedView.TranslatedWorldToClip);
+        OutPosition =  ClipSpacePosition;
+    }
     OutUV = InTexCoord;
+    // Test1.x = GetPrimitiveData(CharmPrimitiveId).InstanceSceneDataOffset;
+    // Test1.y = DrawInstanceId;
+    // Test1.z = VertexId;
+    // Test1.w = CharmPrimitiveId;
 }

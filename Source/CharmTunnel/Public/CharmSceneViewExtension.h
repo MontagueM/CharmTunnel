@@ -27,7 +27,8 @@ public:
 
     virtual void PostRenderBasePass_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneView& InView) override;
     void DoWorkLambda(FScene* Scene, FCachedPassMeshDrawListContext& DrawListContext, int32 BatchIndex);
-    void RenderStaticMesh(FRHICommandListImmediate& RHICmdList, FSceneView& InView, FStaticMeshSceneProxy* StaticMeshSceneProxy);
+    void RenderStaticMesh(
+        FRHICommandListImmediate& RHICmdList, FSceneView& InView, FStaticMeshSceneProxy* StaticMeshSceneProxy, uint32 PrimitiveId);
 
     //~ Begin FSceneViewExtensionBase Interface
     virtual int32 GetPriority() const override { return 100; }

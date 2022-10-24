@@ -41,18 +41,25 @@
 #include "Texture2DPreview.h"
 #include "TextureResource.h"
 #include "VirtualTexturing.h"
+
+class FCharmData : public FMeshMaterialShaderElementData
+{
+public:
+    FMatrix44f LocalToWorld;
+};
+
 class FCharmTestVS : public FMeshMaterialShader
 {
     DECLARE_SHADER_TYPE(FCharmTestVS, MeshMaterial);
 
-    LAYOUT_FIELD(FShaderParameter, TranslatedWorldToClip)
+    LAYOUT_FIELD(FShaderParameter, CharmPrimitiveIdParameter)
 
 public:
     FCharmTestVS() = default;
 
     FCharmTestVS(const FMeshMaterialShaderType::CompiledShaderInitializerType& Initializer) : FMeshMaterialShader(Initializer)
     {
-        BindParams(Initializer.ParameterMap);
+        CharmPrimitiveIdParameter.Bind(Initializer.ParameterMap, TEXT("CharmPrimitiveId"));
     }
 
     // It tries to compile for every single permutation of a shader, but we can restrict its use cases
@@ -75,15 +82,12 @@ public:
         FMaterialShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
     }
 
-    void BindParams(const FShaderParameterMap& ParameterMap)
+    void SetParameters(FRHICommandList& RHICmdList, const FSceneView View, uint32 CharmPrimitiveId)
     {
-        //
-        TranslatedWorldToClip.Bind(ParameterMap, TEXT("TranslatedWorldToClip"));
-    }
-
-    void SetCustomParameters(FRHICommandList& InRHICmdList, FMatrix44f InTranslatedWorldToClip)
-    {
-        SetShaderValue(InRHICmdList, InRHICmdList.GetBoundPixelShader(), TranslatedWorldToClip, InTranslatedWorldToClip);
+        FRHIVertexShader* ShaderRHI = RHICmdList.GetBoundVertexShader();
+        SetViewParameters(RHICmdList, ShaderRHI, View, View.ViewUniformBuffer);
+        SetShaderValue(RHICmdList, ShaderRHI, CharmPrimitiveIdParameter, CharmPrimitiveId);
+        // SetShaderValue(InRHICmdList, ShaderRHI, LocalToWorld, InLocalToWorld);
     }
 };
 
@@ -128,9 +132,10 @@ void FCharmSceneViewExtension::PostRenderBasePass_RenderThread(FRHICommandListIm
     // but we want shadows etc so keep that stuff
     // https://github.com/donaldwuid/unreal_source_explained/blob/master/main/rendering.md <-- using old system
 
-    for (auto PrimitiveSceneProxy : Scene->PrimitiveSceneProxies)
+    int PrimitiveId = 0;
+    for (auto& PrimitiveSceneProxy : Scene->PrimitiveSceneProxies)
     {
-        FStaticMeshSceneProxy* a = static_cast<FStaticMeshSceneProxy*>(PrimitiveSceneProxy);
+        // FStaticMeshSceneProxy* a = static_cast<FStaticMeshSceneProxy*>(Scene->PrimitiveSceneProxies[PrimitiveId]);
         // We have to dynamic cast to ensure it is a valid FStaticMeshSceneProxy - could try GetTypeHash but unsure
         // auto q = FStaticMeshSceneProxy;
 
@@ -140,7 +145,8 @@ void FCharmSceneViewExtension::PostRenderBasePass_RenderThread(FRHICommandListIm
         //     continue;
         // }
         FStaticMeshSceneProxy* StaticMeshSceneProxy = static_cast<FStaticMeshSceneProxy*>(PrimitiveSceneProxy);
-        RenderStaticMesh(RHICmdList, InView, StaticMeshSceneProxy);
+        RenderStaticMesh(RHICmdList, InView, StaticMeshSceneProxy, PrimitiveId);
+        PrimitiveId++;
     }
     bool a = 0;
 }
@@ -210,7 +216,7 @@ void FCharmSceneViewExtension::DoWorkLambda(FScene* Scene, FCachedPassMeshDrawLi
 }
 
 void FCharmSceneViewExtension::RenderStaticMesh(
-    FRHICommandListImmediate& RHICmdList, FSceneView& InView, FStaticMeshSceneProxy* StaticMeshSceneProxy)
+    FRHICommandListImmediate& RHICmdList, FSceneView& InView, FStaticMeshSceneProxy* StaticMeshSceneProxy, uint32 PrimitiveId)
 {
     FSceneView* View = &InView;
     // BuildMeshDrawCommands -> DrawListContext->AddCommand + DrawListContext->FinalizeCommand
@@ -333,14 +339,15 @@ void FCharmSceneViewExtension::RenderStaticMesh(
             {
                 continue;
             }
+            auto SMElement = StaticMesh.Elements[0];
 
             Shaders.TryGetVertexShader(VertexShader);
             Shaders.TryGetPixelShader(PixelShader);
             check(VertexShader.IsValid());
             check(PixelShader.IsValid());
+            // const TUniformBuffer<FPrimitiveUniformShaderParameters>* PUBR = SMElement.PrimitiveUniformBufferResource;
+            // FRHIUniformBuffer* PUB = PUBR->GetUniformBufferRHI();
 
-            VertexShader->SetParameters(RHICmdList, VertexShader.GetVertexShader(), MaterialProxy, Material, InView);
-            // VertexShader->SetCustomParameters(RHICmdList, FMatrix44f(View->ViewMatrices.GetTranslatedViewProjectionMatrix()));
             // VertexShader->SetViewParameters(RHICmdList, VertexShader.GetVertexShader(), InView, InView.ViewUniformBuffer);
 
             PixelShader->SetParameters(RHICmdList, PixelShader.GetPixelShader(), MaterialProxy, Material, InView);
@@ -355,10 +362,12 @@ void FCharmSceneViewExtension::RenderStaticMesh(
             // THIS IS WHERE THE ATTRIBUTE SET IS DECLARED!!!!
             GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = VertexFactory->GetDeclaration(EVertexInputStreamType::Default);
 
+            SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
+
             // assume 1 element
-            auto SMElement = StaticMesh.Elements[0];
-            auto q = SMElement.PrimitiveUniformBuffer;
-            FRHIUniformBuffer* VFUserData = static_cast<FRHIUniformBuffer*>(SMElement.VertexFactoryUserData);
+            // auto q = SMElement.PrimitiveUniformBuffer;
+            // FRHIUniformBuffer* VFUserData =
+            // static_cast<FRHIUniformBuffer*>(SMElement.VertexFactoryUserData);    // <--- FLocalVertexFactoryUniformShaderParameters
             FVertexInputStreamArray VertexStreams;
             VertexFactory->GetStreams(ERHIFeatureLevel::ES3_1, EVertexInputStreamType::Default,
                 VertexStreams);    // ES3_1 to force it giving us manual fetch streams
@@ -366,6 +375,12 @@ void FCharmSceneViewExtension::RenderStaticMesh(
             {
                 RHICmdList.SetStreamSource(VertexStream.StreamIndex, VertexStream.VertexBuffer, VertexStream.Offset);
             }
+
+            // TResourceArray<UINT32, VERTEXBUFFER_ALIGNMENT> Verts;
+            // Verts.Add(12);
+            // FRHIResourceCreateInfo CreateInfo(TEXT("CharmPrimitiveId"), &Verts);
+            // FBufferRHIRef VertexBufferRHI = RHICreateVertexBuffer(Verts.GetResourceDataSize(), BUF_Static, CreateInfo);
+            // RHICmdList.SetStreamSource(13, VertexBufferRHI.GetReference(), 0);
             // auto VertexStream = VertexStreams[0];
             // RHICmdList.SetStreamSource(0, SMElement.VertexBufferRHI, 0);
 
@@ -378,11 +393,24 @@ void FCharmSceneViewExtension::RenderStaticMesh(
             // VertexShader->GetUniformBufferParameter<FLocalVertexFactoryUniformShaderParameters>(), VFUserData);
 
             // FInstanceCullingGlobalUniforms InstanceCullingGlobalUniforms;
-            // CreateUniformBufferImmediate<FInstanceCullingGlobalUniforms>(InstanceCullingGlobalUniforms, UniformBuffer_SingleFrame);
+            // InstanceCullingGlobalUniforms.InstanceIdsBuffer
+            // CreateUniformBufferImmediate<FInstanceCullingGlobalUniforms>(
+            // InstanceCullingGlobalUniforms, UniformBuffer_SingleFrame);
             // SetUniformBufferParameterImmediate(RHICmdList, VertexShader.GetVertexShader(),
             // VertexShader->GetUniformBufferParameter<FInstanceCullingGlobalUniforms>(), InstanceCullingGlobalUniforms);
+            // GetLocalToWorld()
+            // RHICmdList
 
-            SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
+            // FCharmData ShaderElementData;
+            // ShaderElementData.InitializeMeshMaterialData(View, StaticMeshSceneProxy, StaticMesh, -1, true);
+            // ShaderElementData.LocalToWorld = FMatrix44f(StaticMeshSceneProxy->GetLocalToWorld());
+            VertexShader->SetParameters(RHICmdList, InView, PrimitiveId);
+            // VertexShader->SetCustomParameters(RHICmdList, VertexShader.GetVertexShader(), 12);
+            // FCharmTestVS* const VertexShaderPtr = static_cast<FCharmTestVS*>(VertexShader.GetShader());
+            // check(VertexShaderPtr != nullptr);
+            // SetUniformBufferParameterImmediate(RHICmdList, VertexShader.GetVertexShader(),
+            // VertexShaderPtr->GetUniformBufferParameter<FDrawRectangleParameters>(), Parameters);
+
             RHICmdList.DrawIndexedPrimitive(SMElement.IndexBuffer->IndexBufferRHI, SMElement.BaseVertexIndex, 0,
                 SMElement.MaxVertexIndex - SMElement.MinVertexIndex, SMElement.FirstIndex, SMElement.NumPrimitives, SMElement.NumInstances);
         }
