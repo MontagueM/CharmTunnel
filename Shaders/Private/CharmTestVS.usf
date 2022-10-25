@@ -37,7 +37,7 @@ void MainVS(
     out float4 OutPosition : SV_POSITION,
     out float2 OutUV : TEXCOORD0)
 {
-    ResolvedView = ResolveView();
+    // ResolvedView = ResolveView();
     // InstanceIdOffset = 0x80000000;
 
     uint InstanceId = GetPrimitiveData(CharmPrimitiveId).InstanceSceneDataOffset + DrawInstanceId;

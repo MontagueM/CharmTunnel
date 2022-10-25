@@ -95,10 +95,16 @@ class FCharmTestPS : public FMeshMaterialShader
 {
     DECLARE_SHADER_TYPE(FCharmTestPS, MeshMaterial);
 
+    LAYOUT_FIELD(FShaderResourceParameter, InputTexture)
+    LAYOUT_FIELD(FShaderResourceParameter, InputTextureSampler)
 public:
     FCharmTestPS() = default;
 
-    FCharmTestPS(const FMeshMaterialShaderType::CompiledShaderInitializerType& Initializer) : FMeshMaterialShader(Initializer) {}
+    FCharmTestPS(const FMeshMaterialShaderType::CompiledShaderInitializerType& Initializer) : FMeshMaterialShader(Initializer)
+    {
+        InputTexture.Bind(Initializer.ParameterMap, TEXT("InputTexture"));
+        InputTextureSampler.Bind(Initializer.ParameterMap, TEXT("InputTextureSampler"));
+    }
 
     static bool ShouldCompilePermutation(const FMeshMaterialShaderPermutationParameters& Parameters)
     {
@@ -113,6 +119,13 @@ public:
         SetViewParameters(RHICmdList, ShaderRHI, View, View.ViewUniformBuffer);
         FMeshMaterialShader::SetParameters(RHICmdList, ShaderRHI, MaterialProxy, Material, View);
         // SetShaderValue(InRHICmdList, ShaderRHI, LocalToWorld, InLocalToWorld);
+    }
+
+    void SetTexture(FRHICommandList& RHICmdList, FTextureRHIRef InInputTexture)
+    {
+        FRHIPixelShader* ShaderRHI = RHICmdList.GetBoundPixelShader();
+        SetTextureParameter(RHICmdList, RHICmdList.GetBoundPixelShader(), InputTexture, InputTextureSampler,
+            TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI(), InInputTexture);
     }
 };
 
@@ -326,11 +339,6 @@ void FCharmSceneViewExtension::RenderStaticMesh(
             FGraphicsPipelineStateInitializer GraphicsPSOInit;
             RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
 
-            GraphicsPSOInit.BlendState = TStaticBlendState<CW_RGB>::GetRHI();
-            GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_DepthNearOrEqual>::GetRHI();
-            GraphicsPSOInit.PrimitiveType = PT_TriangleList;
-            GraphicsPSOInit.RasterizerState = TStaticRasterizerState<>::GetRHI();
-
             const FVertexFactory* VertexFactory = StaticMesh.VertexFactory;
 
             const FMaterialRenderProxy* MaterialProxy = StaticMesh.MaterialRenderProxy;
@@ -370,6 +378,11 @@ void FCharmSceneViewExtension::RenderStaticMesh(
             // THIS IS WHERE THE ATTRIBUTE SET IS DECLARED!!!!
             GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = VertexFactory->GetDeclaration(EVertexInputStreamType::Default);
 
+            // Enable depth test
+            GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_DepthNearOrEqual>::GetRHI();
+            GraphicsPSOInit.PrimitiveType = PT_TriangleList;
+            GraphicsPSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
+            GraphicsPSOInit.BlendState = TStaticBlendStateWriteMask<>::GetRHI();
             SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
 
             // assume 1 element
@@ -419,6 +432,34 @@ void FCharmSceneViewExtension::RenderStaticMesh(
             // check(VertexShaderPtr != nullptr);
             // SetUniformBufferParameterImmediate(RHICmdList, VertexShader.GetVertexShader(),
             // VertexShaderPtr->GetUniformBufferParameter<FDrawRectangleParameters>(), Parameters);
+
+            // UTexture2D* Texture = NewObject<UTexture2D>(Font, *TextureString);
+            bool bSet = false;
+            FMaterialRenderContext MaterialRenderContext(MaterialProxy, Material, View);
+            const FMaterialResource* MatInt = Material.GetMaterialInterface()->GetMaterialResource(FeatureLevel);
+            if (MatInt)
+            {
+                const FUniformExpressionSet& UniformExpressions = MatInt->GetUniformExpressions();
+                EMaterialTextureParameterType TextureTypes[] = {
+                    EMaterialTextureParameterType::Standard2D, EMaterialTextureParameterType::Virtual};
+                for (EMaterialTextureParameterType TextureType : TextureTypes)
+                {
+                    for (int32 i = 0; i < UniformExpressions.GetNumTextures(TextureType); ++i)
+                    {
+                        const UTexture* Texture;
+                        UniformExpressions.GetTextureValue(TextureType, i, MaterialRenderContext, Material, Texture);
+
+                        const UTexture2D* Texture2D = Cast<UTexture2D>(Texture);
+
+                        if (!bSet)
+                        {
+                            bSet = true;
+                            PixelShader->SetTexture(RHICmdList, Texture2D->GetResource()->GetTexture2DRHI());
+                        }
+                        bool b = 0;
+                    }
+                }
+            }
 
             RHICmdList.DrawIndexedPrimitive(SMElement.IndexBuffer->IndexBufferRHI, SMElement.BaseVertexIndex, 0,
                 SMElement.MaxVertexIndex - SMElement.MinVertexIndex, SMElement.FirstIndex, SMElement.NumPrimitives, SMElement.NumInstances);

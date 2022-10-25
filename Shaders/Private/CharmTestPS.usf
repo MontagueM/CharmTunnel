@@ -4,6 +4,10 @@
 #include "/Engine/Public/Platform.ush"
 // clang-format off
 
+Texture2D		InputTexture;
+SamplerState	InputTextureSampler;
+
+
 /* Pixel shader
 =============================================================================*/
 
@@ -15,8 +19,8 @@ void MainPS(
     out float4 OutGBufferB : SV_Target2, // r = metallic, g = specular, b = roughness, a = ShadingModelID
     out float4 OutGBufferC : SV_Target3, // rgb = base colour, a = ambient occlusion
     out float4 OutGBufferD : SV_Target4,
-    out float4 OutGBufferE : SV_Target5,
-    out float OutSceneDepth : SV_Depth
+    out float4 OutGBufferE : SV_Target5
+    // out float OutSceneDepth : SV_Depth
 )
 {
     ResolvedView = ResolveView();
@@ -42,11 +46,14 @@ void MainPS(
     // OutGBufferB.w = EncodeShadingModelIdAndSelectiveOutputMask(SHADINGMODELID_DEFAULT_LIT, 0);
     // OutGBufferC.xyz = float3(1, 0, 0); // test set completely blue
     // OutGBufferE.xyzw = 1;
-    OutSceneDepth = InPosition.w;
+    // OutSceneDepth = InPosition.w;
 
     float3 WorldNormal = float3(0, 0, 1);
     float3 WorldTangent = float3(0, 0, 1);
-    float3 BaseColor = float3(0.25, 1.0, 0);
+    // float3 BaseColor = float3(0.25, 1.0, 0);
+    // float4 BaseColor = Texture2DSample(InTexture, InTextureSampler, InUV);
+    float4 BaseColor = InputTexture.Sample(InputTextureSampler, InUV.xy);
+    BaseColor.w = 1;
     float Metallic = 0.8;
     float Specular = 0.5;
     float Roughness = 0.9;
@@ -55,8 +62,8 @@ void MainPS(
 
     // GBuffer.GBufferAO = MaterialAO;
     // GBuffer.PerObjectGBufferData = GetPrimitive_PerObjectGBufferData(MaterialParameters.PrimitiveId);
-    GBuffer.Depth = InPosition.w;
-    // GBuffer.PrecomputedShadowFactors = GetPrecomputedShadowMasks(LightmapVTPageTableResult, Interpolants, MaterialParameters, VolumetricLightmapBrickTextureUVs);
+    // GBuffer.Depth = InPosition.w;
+    GBuffer.PrecomputedShadowFactors = 1;
     GBuffer.WorldNormal = WorldNormal;
     GBuffer.WorldTangent = WorldTangent;
     GBuffer.BaseColor = BaseColor;
