@@ -7,6 +7,12 @@
 Texture2D		InputTexture;
 SamplerState	InputTextureSampler;
 
+float3x3 CharmAssembleTangentToWorld(float4 TangentToWorld0, float4 TangentToWorld1, float4 TangentToWorld2)
+{
+    // float3 TangentToWorld1 = cross(TangentToWorld2.xyz,TangentToWorld0.xyz) * TangentToWorld2.w;
+    return float3x3(TangentToWorld0.xyz, TangentToWorld1.xyz, TangentToWorld2.xyz);
+}
+
 
 /* Pixel shader
 =============================================================================*/
@@ -14,6 +20,10 @@ SamplerState	InputTextureSampler;
 void MainPS(
     float4 InPosition : SV_POSITION,
     float2 InUV : TEXCOORD0,
+    float4 TangentToWorld0 : TEXCOORD10_centroid,
+    float4 TangentToWorld1 : TEXCOORD11_centroid,
+    float4 TangentToWorld2 : TEXCOORD12_centroid,
+    nointerpolation uint PrimitiveId : PRIMITIVE_ID,
     out float4 OutSceneColor : SV_Target0,
     out float4 OutGBufferA : SV_Target1, // rgb = world normal
     out float4 OutGBufferB : SV_Target2, // r = metallic, g = specular, b = roughness, a = ShadingModelID
@@ -48,8 +58,12 @@ void MainPS(
     // OutGBufferE.xyzw = 1;
     // OutSceneDepth = InPosition.w;
 
-    float3 WorldNormal = float3(0, 0, 1);
-    float3 WorldTangent = float3(0, 0, 1);
+    float3x3 TangentToWorld = AssembleTangentToWorld(TangentToWorld0, TangentToWorld2);
+    float3 MaterialNormal = float3(0, 0, 1);
+    MaterialNormal = normalize(MaterialNormal);
+    float3 WorldNormal = TransformTangentNormalToWorld(TangentToWorld, MaterialNormal);
+
+
     // float3 BaseColor = float3(0.25, 1.0, 0);
     // float4 BaseColor = Texture2DSample(InTexture, InTextureSampler, InUV);
     float4 BaseColor = InputTexture.Sample(InputTextureSampler, InUV.xy);
@@ -65,7 +79,7 @@ void MainPS(
     // GBuffer.Depth = InPosition.w;
     GBuffer.PrecomputedShadowFactors = 1;
     GBuffer.WorldNormal = WorldNormal;
-    GBuffer.WorldTangent = WorldTangent;
+    // GBuffer.WorldTangent = WorldTangent;
     GBuffer.BaseColor = BaseColor;
     GBuffer.Metallic = Metallic;
     GBuffer.Specular = Specular;

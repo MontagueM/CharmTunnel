@@ -14,6 +14,7 @@
 #include "MeshMaterialShaderType.h"
 #include "MeshPassProcessor.h"
 #include "MeshPassProcessor.inl"
+#include "Misc/RemoteConfigIni.h"
 #include "NaniteSceneProxy.h"
 #include "OneColorShader.h"
 #include "PipelineStateCache.h"
@@ -387,8 +388,8 @@ void FCharmSceneViewExtension::RenderStaticMesh(
 
             // assume 1 element
             // auto q = SMElement.PrimitiveUniformBuffer;
-            // FRHIUniformBuffer* VFUserData =
-            // static_cast<FRHIUniformBuffer*>(SMElement.VertexFactoryUserData);    // <--- FLocalVertexFactoryUniformShaderParameters
+            FRHIUniformBuffer* LocalVFBuffer =
+                static_cast<FRHIUniformBuffer*>(SMElement.VertexFactoryUserData);    // <--- FLocalVertexFactoryUniformShaderParameters
             FVertexInputStreamArray VertexStreams;
             VertexFactory->GetStreams(ERHIFeatureLevel::ES3_1, EVertexInputStreamType::Default,
                 VertexStreams);    // ES3_1 to force it giving us manual fetch streams
@@ -405,13 +406,58 @@ void FCharmSceneViewExtension::RenderStaticMesh(
             // auto VertexStream = VertexStreams[0];
             // RHICmdList.SetStreamSource(0, SMElement.VertexBufferRHI, 0);
 
+            // go forwards, can we go backwards?
+            // FLocalVertexFactoryUniformShaderParameters LocalVF;
+            // TUniformBufferRef<FLocalVertexFactoryUniformShaderParameters> UniformBuffer;
+            const FLocalVertexFactory* LocalVertexFactory = static_cast<const FLocalVertexFactory*>(VertexFactory);
+            // UniformBuffer = TUniformBufferRef<FLocalVertexFactoryUniformShaderParameters>::CreateUniformBufferImmediate(
+            //     LocalVF, UniformBuffer_SingleFrame);
+            const FRHIUniformBufferLayout* UniformBufferLayout = LocalVFBuffer->GetLayoutPtr();
+
+            // FScene* Scene = View->Family->Scene->GetRenderScene();
+            // FMeshDrawSingleShaderBindings* ShaderBindings = nullptr;
+            // FMeshMaterialShaderElementData* ElementData = nullptr;
+            // FRHIUniformBuffer* VertexFactoryUniformBuffer = static_cast<FRHIUniformBuffer*>(SMElement.VertexFactoryUserData);
+            // FVertexInputStreamArray VertexStreams2;
+            // VertexShader->GetElementShaderBindings(VertexShader.GetPointerTable(), Scene, View, VertexFactory,
+            // EVertexInputStreamType::Default, FeatureLevel, StaticMeshSceneProxy, StaticMesh, SMElement, *ElementData, *ShaderBindings,
+            // VertexStreams2);
+            TUniformBufferRef<FLocalVertexFactoryUniformShaderParameters> Buffer =
+                CreateLocalVFUniformBuffer(LocalVertexFactory, 0, nullptr, SMElement.BaseVertexIndex, 0);
+            auto InstancingUserData = SMElement.UserData;
+            const auto& LocalVertexFactoryUniformShaderParameters =
+                VertexShader->GetUniformBufferParameter<FLocalVertexFactoryUniformShaderParameters>();
+
+            SetUniformBufferParameter(RHICmdList, VertexShader.GetVertexShader(), LocalVertexFactoryUniformShaderParameters, Buffer);
+
+            // FRHIUniformBuffer* test = UniformBuffer.GetReference();
+            // test = LocalVFBuffer;
+            // for (int32 Index = 0; Index < NumResources; ++Index)
+            // {
+            //     UniformBuffer->ResourceTable[Index] = GetShaderParameterResourceRHI(LocalVFBuffer, Layout.Resources[Index].MemberOffset,
+            //     Layout.Resources[Index].MemberType);
+            // }
             // const FLocalVertexFactory* LocalVF = static_cast<const FLocalVertexFactory*>(VertexFactory);
             // TUniformBufferRef<FLocalVertexFactoryUniformShaderParameters> VFUniformBufferRef =
             // CreateLocalVFUniformBuffer(LocalVF, 0, nullptr, SMElement.BaseVertexIndex, SMElement.BaseVertexIndex);
             // FLocalVertexFactoryUniformShaderParameters VFUniformBuffer;
             // VFUniformBufferRef.CreateUniformBufferImmediate(VFUniformBuffer, UniformBuffer_SingleFrame);
+            // UniformBuffer.UpdateUniformBufferImmediate(LocalVF);
+            // FLocalVertexFactoryUniformShaderParameters x;
             // SetUniformBufferParameterImmediate(RHICmdList, VertexShader.GetVertexShader(),
-            // VertexShader->GetUniformBufferParameter<FLocalVertexFactoryUniformShaderParameters>(), VFUserData);
+            // VertexShader->GetUniformBufferParameter<FLocalVertexFactoryUniformShaderParameters>(), );
+
+            // auto& LocalVFUSP = VertexShader->GetUniformBufferParameter<FLocalVertexFactoryUniformShaderParameters>();
+            // FLocalUniformBuffer UniformBufferLocalVF =
+            // RHICmdList.BuildLocalUniformBuffer(&LocalVFBuffer, UniformBufferLayout->ConstantBufferSize, UniformBufferLayout);
+
+            // FUniformBufferStaticBindings InUniformBuffers{};
+            // InUniformBuffers.AddUniformBuffer(View->ViewUniformBuffer.GetReference());
+            // FLumenCardPassUniformParameters Slot1Contents;
+            // InUniformBuffers.AddUniformBuffer(
+            // FLumenCardPassUniformParameters::CreateUniformBuffer(Slot1Contents, UniformBuffer_SingleFrame));
+            // InUniformBuffers.AddUniformBuffer(LocalVFBuffer);
+            // RHICmdList.SetStaticUniformBuffers(InUniformBuffers);
 
             // FInstanceCullingGlobalUniforms InstanceCullingGlobalUniforms;
             // InstanceCullingGlobalUniforms.InstanceIdsBuffer

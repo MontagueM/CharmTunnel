@@ -24,6 +24,33 @@
 //     float4x4 LocalToWorld;
 // }
 
+float3x3  CalcTangentToLocal(uint VertexId, inout float TangentSign)
+{
+
+    float3  TangentInputX = LocalVF_VertexFetch_PackedTangentsBuffer[2 * (LocalVF_VertexFetch_Parameters[ 3 ] + VertexId) + 0].xyz;
+    float4  TangentInputZ = LocalVF_VertexFetch_PackedTangentsBuffer[2 * (LocalVF_VertexFetch_Parameters[ 3 ] + VertexId) + 1].xyzw;
+    float3  TangentX =  (TangentInputX) ;
+    float4  TangentZ =  (TangentInputZ) ;
+    TangentSign = TangentZ.w;
+    float3  TangentY = cross(TangentZ.xyz, TangentX) * TangentZ.w;
+    float3x3  Result;
+    Result[0] = cross(TangentY, TangentZ.xyz) * TangentZ.w;
+    Result[1] = TangentY;
+    Result[2] = TangentZ.xyz;
+
+    return Result;
+}
+
+float3x3  CalcTangentToWorldNoScale(FInstanceSceneData InstanceData,  float3x3  TangentToLocal)
+{
+    float3x3  LocalToWorld = LWCToFloat3x3(InstanceData.LocalToWorld);
+    float3  InvScale = InstanceData.InvNonUniformScale;
+    LocalToWorld[0] *= InvScale.x;
+    LocalToWorld[1] *= InvScale.y;
+    LocalToWorld[2] *= InvScale.z;
+    return mul(TangentToLocal, LocalToWorld);
+}
+
 uint CharmPrimitiveId;
 
 // FVertexFactoryInput is from LocalVertexFactory.ush
@@ -35,9 +62,14 @@ void MainVS(
     uint DrawInstanceId : SV_InstanceID,
     uint VertexId : SV_VertexID,
     out float4 OutPosition : SV_POSITION,
-    out float2 OutUV : TEXCOORD0)
+    out float2 OutUV : TEXCOORD0,
+    out float4 TangentToWorld0 : TEXCOORD10_centroid,
+    out float4 TangentToWorld1 : TEXCOORD11_centroid,
+    out float4 TangentToWorld2 : TEXCOORD12_centroid,
+    out nointerpolation uint PrimitiveId : PRIMITIVE_ID
+    )
 {
-    // ResolvedView = ResolveView();
+    ResolvedView = ResolveView();
     // InstanceIdOffset = 0x80000000;
 
     uint InstanceId = GetPrimitiveData(CharmPrimitiveId).InstanceSceneDataOffset + DrawInstanceId;
@@ -47,10 +79,21 @@ void MainVS(
     float4 ClipSpacePosition;
     {
         float4 RasterizedWorldPosition = WorldPosition;
-        ClipSpacePosition =  mul(RasterizedWorldPosition, ResolvedView.TranslatedWorldToClip);
+        ClipSpacePosition =  mul(RasterizedWorldPosition, View_TranslatedWorldToClip);
         OutPosition =  ClipSpacePosition;
     }
     OutUV = InTexCoord;
+
+    float TangentSign = 1.0;
+    // Requires LocalVF buffer
+    float3x3 TangentToLocal = CalcTangentToLocal(VertexId, TangentSign);
+    float3x3 TangentToWorld = CalcTangentToWorldNoScale(InstanceData, TangentToLocal);
+    float TangentToWorldSign = TangentSign * InstanceData.DeterminantSign;
+    TangentToWorld0 = float4(TangentToWorld[0], 0);
+    // TODO remove TangentToWorld1
+    TangentToWorld1 = float4(TangentToWorld[1], 0);
+    TangentToWorld2 = float4(TangentToWorld[2], TangentSign);
+    PrimitiveId = CharmPrimitiveId;
     // Test1.x = GetPrimitiveData(CharmPrimitiveId).InstanceSceneDataOffset;
     // Test1.y = DrawInstanceId;
     // Test1.z = VertexId;
