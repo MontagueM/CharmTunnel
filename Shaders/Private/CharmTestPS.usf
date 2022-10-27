@@ -29,8 +29,8 @@ void MainPS(
     out float4 OutGBufferB : SV_Target2, // r = metallic, g = specular, b = roughness, a = ShadingModelID
     out float4 OutGBufferC : SV_Target3, // rgb = base colour, a = ambient occlusion
     out float4 OutGBufferD : SV_Target4,
-    out float4 OutGBufferE : SV_Target5,
-    out float OutSceneDepth : SV_Depth
+    out float4 OutGBufferE : SV_Target5
+    // out float OutSceneDepth : SV_Depth
 )
 {
     float4 InMRT1 = SceneTexturesStruct_GBufferATexture.Load(int3(InPosition.xy, 0)).xyzw;
@@ -104,13 +104,16 @@ void MainPS(
     float QuantizationBias = PseudoRandom( InPosition.xy ) - 0.5f;
     EncodeGBuffer(GBuffer, OutGBufferA, OutGBufferB, OutGBufferC, OutGBufferD, OutGBufferE, OutVelocity, QuantizationBias);
     
-    OutSceneDepth = 10/InPosition.w;
-    float test = 10/InPosition.w;
-    if (test > InMRT3.w)
-    {
-        OutGBufferC = test;
-    }
-    // OutGBufferC = 10/InPosition.w;
-    OutGBufferD = 10/InPosition.w;
-    OutGBufferE = 10/InPosition.w;
+    // OutSceneDepth = 10/InPosition.w;
+    // if (InPosition.z > InMRT3.z)
+    // {
+    //     OutGBufferC = InPosition.z;
+    // }
+    // else
+    // {
+    //     OutGBufferC = InMRT3;
+    // }
+    // OutGBufferC = SceneTexturesStruct_SceneDepthTexture.Load(int3(InPosition.xy, 0)).x;
+    // OutGBufferD = OutGBufferC.x * View_InvDeviceZToWorldZTransform[0] + View_InvDeviceZToWorldZTransform[1] + 1.0f / (OutGBufferC.x * View_InvDeviceZToWorldZTransform[2] - View_InvDeviceZToWorldZTransform[3]);
+    // OutGBufferE = 10/InPosition.w;
 }

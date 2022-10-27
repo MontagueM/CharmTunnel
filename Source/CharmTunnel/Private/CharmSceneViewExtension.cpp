@@ -9,6 +9,7 @@
 #include "EngineModule.h"
 #include "GlobalShader.h"
 #include "HAL/LowLevelMemTracker.h"
+#include "LevelEditorViewport.h"
 #include "MeshBatch.h"
 #include "MeshMaterialShader.h"
 #include "MeshMaterialShaderType.h"
@@ -142,6 +143,18 @@ IMPLEMENT_SHADER_TYPE(, FCharmTestPS, TEXT("/Plugin/CharmTunnel/Private/CharmTes
 
 FCharmSceneViewExtension::FCharmSceneViewExtension(const FAutoRegister& AutoRegister) : FSceneViewExtensionBase(AutoRegister)
 {
+}
+
+void FCharmSceneViewExtension::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
+{
+    SCOPED_DRAW_EVENTF(GraphBuilder.RHICmdList, RenderStaticMesh, TEXT("CT SM PRE RENDER VIEW"));
+    FLevelEditorViewportClient* ViewportClient = static_cast<FLevelEditorViewportClient*>(InView.Drawer);
+    auto ViewRect = InView.UnconstrainedViewRect;
+    if (ViewportClient)
+    {
+        bool a = 0;
+        // RHICmdList.SetViewport(ViewRect.Min.X, ViewRect.Min.Y, 0,ViewRect.Max.X, ViewRect.Max.Y, 1);
+    }
 }
 
 void FCharmSceneViewExtension::PostRenderBasePass_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneView& InView)
@@ -332,7 +345,7 @@ void FCharmSceneViewExtension::RenderStaticMesh(
     SCOPED_DRAW_EVENTF(RHICmdList, RenderStaticMesh, TEXT("CT SM"));
     for (FStaticMeshBatch& StaticMesh : PSI->StaticMeshes)
     {
-        if (!StaticMesh.bUseForDepthPass)
+        if (true)
         {
             const auto FeatureLevel = InView.GetFeatureLevel();
             IRendererModule& RendererModule = GetRendererModule();
@@ -380,12 +393,76 @@ void FCharmSceneViewExtension::RenderStaticMesh(
             GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = VertexFactory->GetDeclaration(EVertexInputStreamType::Default);
 
             // Enable depth test
+            // Parameters->RenderTargets.DepthStencil = FDepthStencilBinding(DepthTexture, bClearDepth ? ERenderTargetLoadAction::EClear :
+            // ERenderTargetLoadAction::ELoad, ERenderTargetLoadAction::ENoAction, FExclusiveDepthStencil::DepthWrite_StencilNop);
+            GraphicsPSOInit.DepthStencilTargetFlag = ETextureCreateFlags::Shared;
+            GraphicsPSOInit.DepthStencilTargetFormat = PF_DepthStencil;
+            GraphicsPSOInit.DepthTargetLoadAction = ERenderTargetLoadAction::EClear;
+            GraphicsPSOInit.DepthTargetStoreAction = ERenderTargetStoreAction::EStore;
             GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<true, CF_DepthNearOrEqual>::GetRHI();
             GraphicsPSOInit.DepthStencilAccess = FExclusiveDepthStencil::DepthWrite_StencilWrite;
             GraphicsPSOInit.PrimitiveType = PT_TriangleList;
-            GraphicsPSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
+            GraphicsPSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_CW>::GetRHI();
+            RHICmdList.SetViewport(View->CameraConstrainedViewRect.Min.X, View->CameraConstrainedViewRect.Min.Y, 0,
+                View->CameraConstrainedViewRect.Max.X - 1, View->CameraConstrainedViewRect.Max.Y, 1);
+
+            FLevelEditorViewportClient* ViewportClient = static_cast<FLevelEditorViewportClient*>(View->Drawer);
+            if (ViewportClient)
+            {
+                auto Viewport = ViewportClient->Viewport;
+                auto DPIScale = ViewportClient->GetDPIScale();
+                // if (static_cast<FLevelEditorViewportClient*>(View->Drawer)->Viewport(SafeFrame, Viewport))
+                // {
+                // View->CameraConstrainedViewRect = FIntRect(SafeFrame.Left, SafeFrame.Top, SafeFrame.Right, SafeFrame.Bottom);
+                // }
+
+                const int32 SizeX = Viewport->GetSizeXY().X / DPIScale;
+                const int32 SizeY = Viewport->GetSizeXY().Y / DPIScale;
+
+                FSlateRect OutSafeFrameRect = FSlateRect(0, 0, SizeX, SizeY);
+                float FixedAspectRatio;
+
+                bool bSafeFrameActive = false;
+                const UCameraComponent* CameraComponent = ViewportClient->GetCameraComponentForView();
+                if (CameraComponent && CameraComponent->bConstrainAspectRatio)
+                {
+                    FixedAspectRatio = CameraComponent->AspectRatio;
+                    bSafeFrameActive = true;
+                }
+
+                if (bSafeFrameActive)
+                {
+                    // Get the size of the viewport
+                    float ActualAspectRatio = (float) SizeX / (float) SizeY;
+
+                    float SafeWidth = SizeX;
+                    float SafeHeight = SizeY;
+
+                    if (FixedAspectRatio < ActualAspectRatio)
+                    {
+                        // vertical bars required on left and right
+                        SafeWidth = FixedAspectRatio * SizeY;
+                        float CorrectedHalfWidth = SafeWidth * 0.5f;
+                        float CentreX = SizeX * 0.5f;
+                        float X1 = CentreX - CorrectedHalfWidth;
+                        float X2 = CentreX + CorrectedHalfWidth;
+                        OutSafeFrameRect = FSlateRect(X1, 0, X2, SizeY);
+                    }
+                    else
+                    {
+                        // horizontal bars required on top and bottom
+                        SafeHeight = SizeX / FixedAspectRatio;
+                        float CorrectedHalfHeight = SafeHeight * 0.5f;
+                        float CentreY = SizeY * 0.5f;
+                        float Y1 = CentreY - CorrectedHalfHeight;
+                        float Y2 = CentreY + CorrectedHalfHeight;
+                        OutSafeFrameRect = FSlateRect(0, Y1, SizeX, Y2);
+                    }
+                }
+            }
+
             GraphicsPSOInit.BlendState = TStaticBlendStateWriteMask<>::GetRHI();
-            SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
+            SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0, EApplyRendertargetOption::DoNothing);
 
             // assume 1 element
             // auto q = SMElement.PrimitiveUniformBuffer;

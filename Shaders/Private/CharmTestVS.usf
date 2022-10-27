@@ -75,7 +75,7 @@ void MainVS(
     uint InstanceId = GetPrimitiveData(CharmPrimitiveId).InstanceSceneDataOffset + DrawInstanceId;
     FInstanceSceneData InstanceData = GetInstanceSceneData(InstanceId, View_InstanceSceneDataSOAStride);
     FLWCMatrix LocalToWorld = InstanceData.LocalToWorld;
-    InPosition.z += 300;
+    // InPosition.z += 300;
     float4 WorldPosition = TransformLocalToTranslatedWorld(InPosition, LocalToWorld);
     float4 ClipSpacePosition;
     {
@@ -83,6 +83,9 @@ void MainVS(
         ClipSpacePosition =  mul(RasterizedWorldPosition, View_TranslatedWorldToClip);
         OutPosition =  ClipSpacePosition;
     }
+    // ADJUST DEPTH
+    // OutPosition.w *= 0.98;
+    
     OutUV = InTexCoord;
 
     float TangentSign = 1.0;

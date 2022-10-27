@@ -25,6 +25,7 @@ class FCharmSceneViewExtension : public FSceneViewExtensionBase
 public:
     FCharmSceneViewExtension(const FAutoRegister& AutoRegister);
 
+    virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
     virtual void PostRenderBasePass_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneView& InView) override;
     void DoWorkLambda(FScene* Scene, FCachedPassMeshDrawListContext& DrawListContext, int32 BatchIndex);
     void RenderStaticMesh(
