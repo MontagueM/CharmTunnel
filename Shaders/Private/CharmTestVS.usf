@@ -75,6 +75,7 @@ void MainVS(
     uint InstanceId = GetPrimitiveData(CharmPrimitiveId).InstanceSceneDataOffset + DrawInstanceId;
     FInstanceSceneData InstanceData = GetInstanceSceneData(InstanceId, View_InstanceSceneDataSOAStride);
     FLWCMatrix LocalToWorld = InstanceData.LocalToWorld;
+    InPosition.z += 300;
     float4 WorldPosition = TransformLocalToTranslatedWorld(InPosition, LocalToWorld);
     float4 ClipSpacePosition;
     {

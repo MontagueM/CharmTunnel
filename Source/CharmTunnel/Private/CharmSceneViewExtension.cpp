@@ -380,7 +380,8 @@ void FCharmSceneViewExtension::RenderStaticMesh(
             GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = VertexFactory->GetDeclaration(EVertexInputStreamType::Default);
 
             // Enable depth test
-            GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_DepthNearOrEqual>::GetRHI();
+            GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<true, CF_DepthNearOrEqual>::GetRHI();
+            GraphicsPSOInit.DepthStencilAccess = FExclusiveDepthStencil::DepthWrite_StencilWrite;
             GraphicsPSOInit.PrimitiveType = PT_TriangleList;
             GraphicsPSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
             GraphicsPSOInit.BlendState = TStaticBlendStateWriteMask<>::GetRHI();

@@ -29,10 +29,16 @@ void MainPS(
     out float4 OutGBufferB : SV_Target2, // r = metallic, g = specular, b = roughness, a = ShadingModelID
     out float4 OutGBufferC : SV_Target3, // rgb = base colour, a = ambient occlusion
     out float4 OutGBufferD : SV_Target4,
-    out float4 OutGBufferE : SV_Target5
-    // out float OutSceneDepth : SV_Depth
+    out float4 OutGBufferE : SV_Target5,
+    out float OutSceneDepth : SV_Depth
 )
 {
+    float4 InMRT1 = SceneTexturesStruct_GBufferATexture.Load(int3(InPosition.xy, 0)).xyzw;
+    float4 InMRT2 = SceneTexturesStruct_GBufferBTexture.Load(int3(InPosition.xy, 0)).xyzw;
+    float4 InMRT3 = SceneTexturesStruct_GBufferCTexture.Load(int3(InPosition.xy, 0)).xyzw;
+    float4 InMRT4 = SceneTexturesStruct_GBufferDTexture.Load(int3(InPosition.xy, 0)).xyzw;
+    float4 InMRT5 = SceneTexturesStruct_GBufferETexture.Load(int3(InPosition.xy, 0)).xyzw;
+    
     ResolvedView = ResolveView();
 
     FGBufferData GBuffer = (FGBufferData)0;; // <--- use this!!!
@@ -56,7 +62,6 @@ void MainPS(
     // OutGBufferB.w = EncodeShadingModelIdAndSelectiveOutputMask(SHADINGMODELID_DEFAULT_LIT, 0);
     // OutGBufferC.xyz = float3(1, 0, 0); // test set completely blue
     // OutGBufferE.xyzw = 1;
-    // OutSceneDepth = InPosition.w;
 
     float3x3 TangentToWorld = AssembleTangentToWorld(TangentToWorld0, TangentToWorld2);
     float3 MaterialNormal = float3(0, 0, 1);
@@ -76,7 +81,7 @@ void MainPS(
 
     // GBuffer.GBufferAO = MaterialAO;
     // GBuffer.PerObjectGBufferData = GetPrimitive_PerObjectGBufferData(MaterialParameters.PrimitiveId);
-    // GBuffer.Depth = InPosition.w;
+    GBuffer.Depth = 1;
     GBuffer.PrecomputedShadowFactors = 1;
     GBuffer.WorldNormal = WorldNormal;
     // GBuffer.WorldTangent = WorldTangent;
@@ -98,4 +103,14 @@ void MainPS(
     float4 OutVelocity;
     float QuantizationBias = PseudoRandom( InPosition.xy ) - 0.5f;
     EncodeGBuffer(GBuffer, OutGBufferA, OutGBufferB, OutGBufferC, OutGBufferD, OutGBufferE, OutVelocity, QuantizationBias);
+    
+    OutSceneDepth = 10/InPosition.w;
+    float test = 10/InPosition.w;
+    if (test > InMRT3.w)
+    {
+        OutGBufferC = test;
+    }
+    // OutGBufferC = 10/InPosition.w;
+    OutGBufferD = 10/InPosition.w;
+    OutGBufferE = 10/InPosition.w;
 }
